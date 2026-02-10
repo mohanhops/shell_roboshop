@@ -8,6 +8,11 @@ DOMAIN_NAME="devops26.online"
 
 # script_name mangodb catalogue frontend user cart shipping payment dispatch
 
+if [ -z "$1" ]; then
+    echo "Error: The input parameter is null or empty."
+    exit 1
+fi
+
 for instance in "$@"; do
     echo "--- Launching $instance ---"
 
