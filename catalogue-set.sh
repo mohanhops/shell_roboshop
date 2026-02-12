@@ -1,5 +1,9 @@
 #!/bin/bash
 
+set -euo pipefail
+
+trap 'echo "There is an error in $LINENO, Command is: $BASH_COMMAND"' ERR
+
 USERID=$(id -u)
 R="\e[31m"
 G="\e[32m"
@@ -20,70 +24,40 @@ if [ $USERID -ne 0 ]; then
     exit 1 # failure is other than 0
 fi
 
-VALIDATE(){ # functions receive inputs through args just like shell script args
-    if [ $1 -ne 0 ]; then
-        echo -e "$2 ... $R FAILURE $N" | tee -a $LOG_FILE
-        exit 1
-    else
-        echo -e "$2 ... $G SUCCESS $N" | tee -a $LOG_FILE
-    fi
-}
-
 ##### NodeJS ####
 dnf module disable nodejs -y &>>$LOG_FILE
-VALIDATE $? "Disabling NodeJS"
 dnf module enable nodejs:20 -y  &>>$LOG_FILE
-VALIDATE $? "Enabling NodeJS 20"
 dnf install nodejs -y &>>$LOG_FILE
-VALIDATE $? "Installing NodeJS"
+echo -e "Installing NodeJS 20 ... $G SUCCESS $N"
 
 id roboshop &>>$LOG_FILE
 if [ $? -ne 0 ]; then
     useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop &>>$LOG_FILE
-    VALIDATE $? "Creating system user"
 else
     echo -e "User already exist ... $Y SKIPPING $N"
 fi
 
 mkdir -p /app
-VALIDATE $? "Creating app directory"
-
 curl -o /tmp/catalogue.zip https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip &>>$LOG_FILE
-VALIDATE $? "Downloading catalogue application"
-
 cd /app 
-VALIDATE $? "Changing to app directory"
-
 rm -rf /app/*
-VALIDATE $? "Removing existing code"
-
 unzip /tmp/catalogue.zip &>>$LOG_FILE
-VALIDATE $? "unzip catalogue"
-
 npm install &>>$LOG_FILE
-VALIDATE $? "Install dependencies"
-
 cp $SCRIPT_DIR/catalogue.service /etc/systemd/system/catalogue.service
-VALIDATE $? "Copy systemctl service"
-
 systemctl daemon-reload
 systemctl enable catalogue &>>$LOG_FILE
-VALIDATE $? "Enable catalogue"
+echo -e "Catalogue application setup ... $G SUCCESS $N"
 
 cp $SCRIPT_DIR/mongo.repo /etc/yum.repos.d/mongo.repo
-VALIDATE $? "Copy mongo repo"
-
-dnf install mongodb-mongosh -y &>>$LOG_FILE
-VALIDATE $? "Install MongoDB client"
+dnf install mongodb-mongoshsfds -y &>>$LOG_FILE
 
 INDEX=$(mongosh mongodb.daws86s.fun --quiet --eval "db.getMongo().getDBNames().indexOf('catalogue')")
 if [ $INDEX -le 0 ]; then
     mongosh --host $MONGODB_HOST </app/db/master-data.js &>>$LOG_FILE
-    VALIDATE $? "Load catalogue products"
 else
     echo -e "Catalogue products already loaded ... $Y SKIPPING $N"
 fi
 
 systemctl restart catalogue
-VALIDATE $? "Restarted catalogue"
+echo -e "Loading products and restarting catalogue ... $G SUCCESS $N"
 

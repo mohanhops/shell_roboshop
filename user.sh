@@ -48,8 +48,8 @@ fi
 mkdir -p /app
 VALIDATE $? "Creating app directory"
 
-curl -o /tmp/catalogue.zip https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip &>>$LOG_FILE
-VALIDATE $? "Downloading catalogue application"
+curl -o /tmp/user.zip https://roboshop-artifacts.s3.amazonaws.com/user-v3.zip &>>$LOG_FILE
+VALIDATE $? "Downloading user application"
 
 cd /app 
 VALIDATE $? "Changing to app directory"
@@ -57,33 +57,19 @@ VALIDATE $? "Changing to app directory"
 rm -rf /app/*
 VALIDATE $? "Removing existing code"
 
-unzip /tmp/catalogue.zip &>>$LOG_FILE
-VALIDATE $? "unzip catalogue"
+unzip /tmp/user.zip &>>$LOG_FILE
+VALIDATE $? "unzip user"
 
 npm install &>>$LOG_FILE
 VALIDATE $? "Install dependencies"
 
-cp $SCRIPT_DIR/catalogue.service /etc/systemd/system/catalogue.service
+cp $SCRIPT_DIR/user.service /etc/systemd/system/user.service
 VALIDATE $? "Copy systemctl service"
 
 systemctl daemon-reload
-systemctl enable catalogue &>>$LOG_FILE
-VALIDATE $? "Enable catalogue"
+systemctl enable user &>>$LOG_FILE
+VALIDATE $? "Enable user"
 
-cp $SCRIPT_DIR/mongo.repo /etc/yum.repos.d/mongo.repo
-VALIDATE $? "Copy mongo repo"
-
-dnf install mongodb-mongosh -y &>>$LOG_FILE
-VALIDATE $? "Install MongoDB client"
-
-INDEX=$(mongosh mongodb.daws86s.fun --quiet --eval "db.getMongo().getDBNames().indexOf('catalogue')")
-if [ $INDEX -le 0 ]; then
-    mongosh --host $MONGODB_HOST </app/db/master-data.js &>>$LOG_FILE
-    VALIDATE $? "Load catalogue products"
-else
-    echo -e "Catalogue products already loaded ... $Y SKIPPING $N"
-fi
-
-systemctl restart catalogue
-VALIDATE $? "Restarted catalogue"
+systemctl restart user
+VALIDATE $? "Restarted user"
 
